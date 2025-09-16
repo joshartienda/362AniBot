@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChatGPT Starter</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>ChatGPT Starter</h1>
+      <div class="controls">
+        <label>
+          Model
+          <select id="model">
+            <option value="gpt-4o-mini" selected>gpt-4o-mini</option>
+            <option value="gpt-4o">gpt-4o</option>
+            <option value="gpt-4o-mini-translate">gpt-4o-mini-translate</option>
+          </select>
+        </label>
+        <label>
+          Temperature
+          <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.7" />
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <ul id="messages" class="messages" aria-live="polite"></ul>
+    </main>
+
+    <footer>
+      <form id="chat-form">
+        <input id="prompt" type="text" placeholder="Type your message…" autocomplete="off" required />
+        <button id="send" type="submit">Send</button>
+      </form>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+  </html>
+
