@@ -6,9 +6,28 @@ const sendBtn = $("#send");
 const modelSel = $("#model");
 const tempInput = $("#temperature");
 
-// In-memory conversation; seed with a system prompt
+const SYSTEM_PROMPT = [
+  "You are AniBot, an enthusiastic expert on anime, manga, and related Japanese animation culture.",
+  "Scope & refusal policy:",
+  "- Engage only with anime-focused questions (series, characters, creators, genres, recommendations, production, conventions, manga tie-ins).",
+  "- For anything outside that scope, refuse with a short apology and explain you only discuss anime; do not provide the requested information.",
+  "- If a request is unsafe or disallowed, refuse in line with the platform's safety rules.",
+].join(" ");
+
+const MAX_USER_MESSAGES = 10; // Keeps the chat to roughly 10-20 total turns
+const CLOSING_SUGGESTIONS = [
+  "Check out 'Mob Psycho 100' if you enjoy heartfelt stories with stylish action.",
+  "Give 'March Comes in Like a Lion' a try for a grounded character drama.",
+  "'Made in Abyss' offers stunning adventure if you can handle darker themes.",
+  "If you like classic shonen energy, revisit 'Yu Yu Hakusho' - it still holds up.",
+  "For a cozy watch, 'Barakamon' delivers warm slice-of-life vibes.",
+];
+
+let conversationClosed = false;
+
+// In-memory conversation; seed with a strict system prompt
 const conversation = [
-  { role: "system", content: "You are a helpful assistant." },
+  { role: "system", content: SYSTEM_PROMPT },
 ];
 
 function addMessage(role, content) {
@@ -20,12 +39,43 @@ function addMessage(role, content) {
 }
 
 function setSending(sending) {
-  input.disabled = sending;
-  sendBtn.disabled = sending;
+  const disabled = sending || conversationClosed;
+  input.disabled = disabled;
+  sendBtn.disabled = disabled;
+  if (conversationClosed) {
+    modelSel.disabled = true;
+    tempInput.disabled = true;
+  }
+}
+
+function userMessageCount() {
+  return conversation.filter((msg) => msg.role === "user").length;
+}
+
+function closeConversationWithSuggestion() {
+  if (conversationClosed) return;
+  conversationClosed = true;
+  const pick = Math.floor(Math.random() * CLOSING_SUGGESTIONS.length);
+  const suggestion = CLOSING_SUGGESTIONS[pick];
+  const closingLine = `Thanks for chatting about anime! Before we wrap up, here's a final recommendation: ${suggestion}`;
+  conversation.push({ role: "assistant", content: closingLine });
+  addMessage("assistant", closingLine);
+  setSending(false);
+}
+
+function maybeCloseConversation() {
+  if (!conversationClosed && userMessageCount() >= MAX_USER_MESSAGES) {
+    closeConversationWithSuggestion();
+  }
 }
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (conversationClosed) {
+    addMessage("assistant", "We've already wrapped up this session. Refresh the page to start a new anime chat!");
+    return;
+  }
+
   const text = input.value.trim();
   if (!text) return;
 
@@ -51,7 +101,7 @@ form.addEventListener("submit", async (e) => {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       const msg = err.error || `Error ${res.status}`;
-      addMessage("system", `⚠️ ${msg}`);
+      addMessage("system", `[Error] ${msg}`);
       return;
     }
 
@@ -59,13 +109,15 @@ form.addEventListener("submit", async (e) => {
     const assistantText = data.reply || "(no content)";
     conversation.push({ role: "assistant", content: assistantText });
     addMessage("assistant", assistantText);
+    maybeCloseConversation();
   } catch (err) {
-    addMessage("system", `⚠️ Network error: ${err.message || err}`);
+    addMessage("system", `[Error] Network issue: ${err.message || err}`);
   } finally {
-    setSending(false);
+    if (!conversationClosed) {
+      setSending(false);
+    }
   }
 });
 
-// Initial tip
-addMessage("system", "Ask me anything to get started.");
-
+// Initial tip for the user
+addMessage("system", "Ask me anything about anime to get started.");

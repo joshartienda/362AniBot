@@ -53,9 +53,15 @@ def chat():
 
         resp = _client.chat.completions.create(**kwargs)
         content = resp.choices[0].message.content
+        usage = getattr(resp, "usage", None)
+        if usage is not None:
+            if hasattr(usage, "model_dump"):
+                usage = usage.model_dump()
+            elif hasattr(usage, "dict"):
+                usage = usage.dict()
         return jsonify({
             "reply": content,
-            "usage": getattr(resp, "usage", None),
+            "usage": usage,
             "model": model,
         })
     except Exception as e:
