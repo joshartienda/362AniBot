@@ -1,0 +1,35 @@
+# -------------------
+# Python files
+# -------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# -------------------
+# Virtual environment
+# -------------------
+venv/
+env/
+ENV/
+
+# -------------------
+# Environment variables (API keys)
+# -------------------
+backend/.env
+*.env
+
+# -------------------
+# IDE / editor configs
+# -------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# -------------------
+# OS files
+# -------------------
+.DS_Store
+Thumbs.db
