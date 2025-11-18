@@ -88,7 +88,8 @@ def chat():
     model = data.get("model") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     temperature = data.get("temperature", 0.7)
     max_tokens = data.get("max_tokens")
-    include_recommendations = bool(data.get("include_recommendations"))
+    include_flag = data.get("include_recommendations")
+    include_recommendations = True if include_flag is None else bool(include_flag)
     recommendation_count = int(data.get("recommendation_count", 5))
 
     if not isinstance(messages, list) or not messages:
@@ -107,6 +108,10 @@ def chat():
             prompt_block = recommendations_to_prompt(anilist_results)
             if prompt_block:
                 messages = messages + [{"role": "system", "content": prompt_block}]
+            if anilist_results:
+                print(f"[AniList] Injected {len(anilist_results)} anime into chat context.")
+            else:
+                print("[AniList] No anime found for the requested count.")
         except Exception as exc:
             # Loggable placeholder; still continue with the chat request.
             print(f"Failed to fetch AniList recommendations: {exc}")
