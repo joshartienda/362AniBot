@@ -39,7 +39,7 @@ query ($id: Int) {
     id
     title { romaji english native }
     genres
-    MediaCoverImage { large }
+    coverImage { large }
     averageScore
     description
   }
@@ -55,11 +55,24 @@ def fetch_anilist_recommendations(count=5):
 
     for anime_id in chosen_ids:
         variables = {"id": anime_id}
-        resp = requests.post(ANILIST_URL, json={"query": ANILIST_QUERY, "variables": variables})
+        try:
+            resp = requests.post(ANILIST_URL, json={"query": ANILIST_QUERY, "variables": variables}, timeout=10)
+        except requests.RequestException as exc:
+            print(f"[AniList] Request error for ID {anime_id}: {exc}")
+            continue
+
         if resp.status_code == 200:
             anime = resp.json().get("data", {}).get("Media")
             if anime:
                 results.append(anime)
+            else:
+                print(f"[AniList] Empty payload returned for ID {anime_id}.")
+        else:
+            print(f"[AniList] Request failed for ID {anime_id}: {resp.status_code} {resp.text}")
+
+    if not results:
+        print("[AniList] No anime results were retrieved from the GraphQL endpoint.")
+
     return results
 
 
@@ -80,11 +93,49 @@ def recommendations_to_prompt(anime_list):
     return "\n".join(lines)
 
 
+def log_anilist_console_feedback(user_messages, anilist_results, reply_text=None):
+    """Emit console output to show AniList data interaction with chat content."""
+    if not anilist_results:
+        print("[AniList] No dataset available for comparison.")
+        return
+
+    user_text = " ".join(
+        (msg.get("content") or "")
+        for msg in user_messages
+        if isinstance(msg, dict) and msg.get("role") == "user"
+    ).lower()
+    reply_text = (reply_text or "").lower()
+
+    known_titles = set()
+    for anime in anilist_results:
+        title = anime.get("title", {}) or {}
+        for key in ("english", "romaji", "native"):
+            name = title.get(key)
+            if name:
+                known_titles.add(name.lower())
+
+    user_hits = sorted({name for name in known_titles if name and name in user_text})
+    reply_hits = sorted({name for name in known_titles if name and name in reply_text})
+
+    print("[AniList] Comparing chat content against AniList dataset...")
+    if user_hits:
+        print(f"[AniList] User prompt referenced: {', '.join(user_hits)}")
+    else:
+        print("[AniList] User prompt did not mention known AniList entries.")
+
+    if reply_text:
+        if reply_hits:
+            print(f"[AniList] Model reply referenced AniList titles: {', '.join(reply_hits)}")
+        else:
+            print("[AniList] Model reply did not explicitly mention the sampled AniList titles.")
+
+
 # ---------------- Chat Endpoint ----------------
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
-    messages = data.get("messages") or []
+    messages = list(data.get("messages") or [])
+    user_messages = [msg for msg in messages if isinstance(msg, dict) and msg.get("role") == "user"]
     model = data.get("model") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     temperature = data.get("temperature", 0.7)
     max_tokens = data.get("max_tokens")
@@ -129,6 +180,7 @@ def chat():
                 usage = usage.model_dump()
             elif hasattr(usage, "dict"):
                 usage = usage.dict()
+        log_anilist_console_feedback(user_messages, anilist_results, content)
         return jsonify({
             "reply": content,
             "usage": usage,
