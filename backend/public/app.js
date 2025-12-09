@@ -12,7 +12,7 @@ const SYSTEM_PROMPT = [
   "Scope & refusal policy: Engage only with anime-focused questions.",
 ].join(" ");
 
-const MAX_USER_MESSAGES = 10; // 10 things the user likes
+const MAX_USER_MESSAGES = 5; // 5 things the user likes
 let conversationClosed = false;
 const conversation = [{ role: "system", content: SYSTEM_PROMPT }];
 
@@ -104,11 +104,20 @@ async function closeConversationWithRecommendation() {
     animeList.forEach((anime) => {
       const card = document.createElement("div");
       card.className = "anime-card";
+      
+      // Clean up description by removing HTML tags and limiting length
+      let description = anime.description || "No description available.";
+      description = description.replace(/<[^>]*>/g, ''); // Remove HTML tags
+      if (description.length > 280) {
+        description = description.substring(0, 280) + "...";
+      }
+      
       card.innerHTML = `
         <img src="${anime.coverImage.large}" alt="${anime.title.romaji}">
         <h2>${anime.title.english || anime.title.romaji}</h2>
         <p><strong>Genres:</strong> ${anime.genres.join(", ")}</p>
         <p><strong>Score:</strong> ${anime.averageScore}</p>
+        <p class="anime-description">${description}</p>
       `;
       carousel.appendChild(card);
     });
@@ -159,7 +168,7 @@ form.addEventListener("submit", async (e) => {
   addMessage("user", text);
   input.value = "";
 
-  // If we've reached 10 likes, go straight to recommendations (no more API chat needed)
+  // If we've reached 5 likes, go straight to recommendations (no more API chat needed)
   if (userMessageCount() >= MAX_USER_MESSAGES) {
     setSending(true);
     maybeCloseConversation();
@@ -204,6 +213,6 @@ form.addEventListener("submit", async (e) => {
 // Initial instructions
 addMessage(
   "system",
-  "Tell me 10 things you like (anime, genres, characters, vibes, or anything). " +
-    "After the 10th one, I'll show you an anime carousel under this chat!"
+  "Tell me 5 things you like (anime, genres, characters, vibes, or anything). " +
+    "After the 5th one, I'll show you an anime carousel under this chat!"
 );
