@@ -5,20 +5,23 @@ const input = $("#prompt");
 const sendBtn = $("#send");
 const modelSel = $("#model");
 const tempInput = $("#temperature");
+const carouselContainer = $("#carousel-container");
 
 const SYSTEM_PROMPT = [
   "You are AniBot, an enthusiastic expert on anime, manga, and related Japanese animation culture.",
   "Scope & refusal policy: Engage only with anime-focused questions.",
 ].join(" ");
 
-const MAX_USER_MESSAGES = 10;
+const MAX_USER_MESSAGES = 10; // 10 things the user likes
 let conversationClosed = false;
 const conversation = [{ role: "system", content: SYSTEM_PROMPT }];
 
 // ---------------- Helper Functions ----------------
 function addMessage(role, content) {
   const li = document.createElement("li");
-  li.className = `msg ${role === 'user' ? 'user' : role === 'assistant' ? 'assistant' : 'sys'}`;
+  li.className = `msg ${
+    role === "user" ? "user" : role === "assistant" ? "assistant" : "sys"
+  }`;
   li.textContent = content;
   messagesEl.appendChild(li);
   li.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -36,14 +39,23 @@ function userMessageCount() {
 
 // ---------------- Drag & Scroll Carousel ----------------
 function makeCarouselDraggable(carousel) {
-  let isDown = false, startX, scrollLeft;
+  let isDown = false,
+    startX,
+    scrollLeft;
   carousel.addEventListener("mousedown", (e) => {
-    isDown = true; carousel.classList.add("active");
+    isDown = true;
+    carousel.classList.add("active");
     startX = e.pageX - carousel.offsetLeft;
     scrollLeft = carousel.scrollLeft;
   });
-  carousel.addEventListener("mouseleave", () => { isDown = false; carousel.classList.remove("active"); });
-  carousel.addEventListener("mouseup", () => { isDown = false; carousel.classList.remove("active"); });
+  carousel.addEventListener("mouseleave", () => {
+    isDown = false;
+    carousel.classList.remove("active");
+  });
+  carousel.addEventListener("mouseup", () => {
+    isDown = false;
+    carousel.classList.remove("active");
+  });
   carousel.addEventListener("mousemove", (e) => {
     if (!isDown) return;
     e.preventDefault();
@@ -58,19 +70,38 @@ async function closeConversationWithRecommendation() {
   conversationClosed = true;
 
   try {
+    // Optional: tell the user we're generating recs
+    addMessage(
+      "assistant",
+      "Nice picks! Let me cook up some anime recommendations for you..."
+    );
+
     const res = await fetch("/api/recommendation?count=5");
     const animeList = await res.json();
 
     if (!animeList || animeList.error || animeList.length === 0) {
-      addMessage("assistant", "Thanks for chatting! Couldn't fetch recommendations.");
+      addMessage(
+        "assistant",
+        "Thanks for sharing your likes! I couldn't fetch recommendations right now."
+      );
       setSending(false);
       return;
     }
 
+    // Clear any previous carousel
+    carouselContainer.innerHTML = "";
+
+    // Add a heading above the carousel
+    const heading = document.createElement("h2");
+    heading.textContent = "Anime you might like:";
+    heading.style.color = "#fff";
+    heading.style.marginBottom = "10px";
+    carouselContainer.appendChild(heading);
+
     const carousel = document.createElement("div");
     carousel.className = "anime-carousel";
 
-    animeList.forEach(anime => {
+    animeList.forEach((anime) => {
       const card = document.createElement("div");
       card.className = "anime-card";
       card.innerHTML = `
@@ -82,14 +113,13 @@ async function closeConversationWithRecommendation() {
       carousel.appendChild(card);
     });
 
-    const li = document.createElement("li");
-    li.className = "msg assistant";
-    li.appendChild(carousel);
-    messagesEl.appendChild(li);
-    li.scrollIntoView({ behavior: "smooth", block: "end" });
+    carouselContainer.appendChild(carousel);
     makeCarouselDraggable(carousel);
 
-    conversation.push({ role: "assistant", content: "[Anime Recommendation Carousel]" });
+    conversation.push({
+      role: "assistant",
+      content: "[Anime Recommendation Carousel]",
+    });
   } catch (err) {
     addMessage("assistant", "Error fetching recommendations: " + err.message);
   }
@@ -100,6 +130,14 @@ async function closeConversationWithRecommendation() {
 function maybeCloseConversation() {
   if (!conversationClosed && userMessageCount() >= MAX_USER_MESSAGES) {
     closeConversationWithRecommendation();
+  } else {
+    const remaining = MAX_USER_MESSAGES - userMessageCount();
+    if (remaining > 0) {
+      addMessage(
+        "system",
+        `Noted! Please tell me ${remaining} more thing(s) you like.`
+      );
+    }
   }
 }
 
@@ -107,7 +145,10 @@ function maybeCloseConversation() {
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (conversationClosed) {
-    addMessage("assistant", "Session closed. Refresh to start a new chat!");
+    addMessage(
+      "assistant",
+      "Session closed. Refresh the page to start a new chat!"
+    );
     return;
   }
 
@@ -117,6 +158,14 @@ form.addEventListener("submit", async (e) => {
   conversation.push({ role: "user", content: text });
   addMessage("user", text);
   input.value = "";
+
+  // If we've reached 10 likes, go straight to recommendations (no more API chat needed)
+  if (userMessageCount() >= MAX_USER_MESSAGES) {
+    setSending(true);
+    maybeCloseConversation();
+    return;
+  }
+
   setSending(true);
 
   try {
@@ -142,6 +191,8 @@ form.addEventListener("submit", async (e) => {
     const assistantText = data.reply || "(no content)";
     conversation.push({ role: "assistant", content: assistantText });
     addMessage("assistant", assistantText);
+
+    // After each submission, check progress toward 10 likes
     maybeCloseConversation();
   } catch (err) {
     addMessage("system", `[Error] Network issue: ${err.message || err}`);
@@ -150,5 +201,9 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-// Initial tip
-addMessage("system", "Ask me anything about anime to get started.");
+// Initial instructions
+addMessage(
+  "system",
+  "Tell me 10 things you like (anime, genres, characters, vibes, or anything). " +
+    "After the 10th one, I'll show you an anime carousel under this chat!"
+);

@@ -7,22 +7,28 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class ="site-header">
+  <header class="site-header">
     <img src="images/Anibot.png" alt="AniBot Logo" class="logo">
   </header>
-  
-  <div class="chat-container">
-    <ul id="messages"></ul>
 
-    <form id="chat-form">
-      <input type="text" id="prompt" placeholder="Ask me anything about anime..." />
-      <button id="send">Send</button>
-      <!-- Hidden inputs to satisfy JS references -->
-      <select id="model" style="display:none">
-        <option value="gpt-4o-mini" selected>gpt-4o-mini</option>
-      </select>
-      <input id="temperature" type="number" value="0.7" step="0.1" style="display:none">
-    </form>
+  <div class="chat-page">
+    <div class="chat-container">
+      <ul id="messages"></ul>
+
+      <form id="chat-form">
+        <input type="text" id="prompt" placeholder="Tell me 10 things you like..." />
+        <button id="send">Send</button>
+
+        <!-- Hidden inputs to satisfy JS references -->
+        <select id="model" style="display:none">
+          <option value="gpt-4o-mini" selected>gpt-4o-mini</option>
+        </select>
+        <input id="temperature" type="number" value="0.7" step="0.1" style="display:none">
+      </form>
+    </div>
+
+    <!-- Anime carousel will appear here after the 10th like -->
+    <div id="carousel-container"></div>
   </div>
 
   <script src="app.js"></script>
