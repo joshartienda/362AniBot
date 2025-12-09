@@ -41,7 +41,7 @@ This repo now includes a minimal Flask backend that proxies ChatGPT API calls an
 
 ### API: `POST /api/chat`
 Request JSON:
-```
+```11
 {
   "messages": [ { "role": "system|user|assistant", "content": "..." } ],
   "model": "gpt-4o-mini",
@@ -53,8 +53,3 @@ Response JSON:
 ```
 { "reply": "...", "usage": { ... }, "model": "..." }
 ```
-
-### Next Steps
-- Replace the simple UI with your app’s components.
-- Add streaming responses, auth, logging, and error reporting as needed.
-- Deploy via your preferred platform (Render, Railway, Fly.io, etc.).
